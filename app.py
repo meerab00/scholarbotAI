@@ -3,7 +3,7 @@ import streamlit as st
 from langchain_groq import ChatGroq
 from pypdf import PdfReader
 from dotenv import load_dotenv
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 import os
 
 # =========================
@@ -91,16 +91,13 @@ for msg in st.session_state.messages:
 if feature == "Formula Sheet":
 
     st.header("📘 Calculus")
-
     st.latex(r"\int x^n dx = \frac{x^{n+1}}{n+1} + C")
     st.latex(r"\frac{d}{dx}(x^n)=nx^{n-1}")
 
     st.header("📗 Algebra")
-
     st.latex(r"(a+b)^2 = a^2 + b^2 + 2ab")
 
     st.header("📙 Geometry")
-
     st.latex(r"Area = \pi r^2")
 
 # =========================
@@ -128,13 +125,12 @@ if prompt:
             response = llm.invoke(prompt).content
 
         # =====================
-        # PDF SUMMARIZER (SAFE)
+        # PDF SUMMARIZER
         # =====================
         elif feature == "PDF Summarizer":
 
             if not uploaded_file or len(chunks) == 0:
                 response = "⚠ Please upload a PDF first."
-
             else:
 
                 summaries = []
@@ -152,7 +148,7 @@ if prompt:
                 ).content
 
         # =====================
-        # MATH SOLVER (LATEX ENABLED)
+        # MATH SOLVER
         # =====================
         elif feature == "Math Solver":
 
@@ -160,16 +156,13 @@ if prompt:
 Solve step by step.
 
 IMPORTANT:
-- Use LaTeX for all formulas
-- Show clear steps
-- Give final answer
+- Use clear steps
+- Solve properly
 
 Problem: {prompt}
 """
 
             response = llm.invoke(full_prompt).content
-
-            st.markdown("### 🧮 Step-by-Step Solution")
 
         # =====================
         # QUIZ GENERATOR
@@ -200,4 +193,4 @@ Problem: {prompt}
 # FOOTER
 # =========================
 st.markdown("---")
-st.caption("Made with ❤️ using LangChain + Groq + Streamlit")
+st.caption("Made with ❤️ using Groq + LangChain + Streamlit")
