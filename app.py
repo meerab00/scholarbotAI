@@ -3,7 +3,24 @@ from langchain_groq import ChatGroq
 from pypdf import PdfReader
 from dotenv import load_dotenv
 import os
+pdf_text = ""
+chunks = []   # 🔥 MUST define globally
 
+if uploaded_file:
+
+    pdf_reader = PdfReader(uploaded_file)
+
+    for page in pdf_reader.pages:
+        text = page.extract_text()
+        if text:
+            pdf_text += text
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200
+    )
+
+    chunks = splitter.split_text(pdf_text)
 # =========================
 # PAGE CONFIG
 # =========================
@@ -72,40 +89,28 @@ st.write("Powered by LangChain + Groq")
 # =========================
 # PDF READING
 # =========================
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+elif feature == "PDF Summarizer":
 
-pdf_text = ""
-chunks = []
+    if not uploaded_file or len(chunks) == 0:
+        response = "⚠ Please upload a PDF first."
 
-if uploaded_file:
+    else:
 
-    pdf_reader = PdfReader(uploaded_file)
+        summaries = []
 
-    for page in pdf_reader.pages:
-        text = page.extract_text()
-        if text:
-            pdf_text += text
+        for chunk in chunks[:5]:
 
-    # 🔥 FIX: split into chunks (IMPORTANT)
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200
-    )
+            prompt = f"Summarize this part:\n{chunk}"
+            result = llm.invoke(prompt).content
+            summaries.append(result)
 
-    chunks = splitter.split_text(pdf_text)
+        final_prompt = f"""
+        Combine these summaries into one easy summary:
 
-    st.sidebar.success("PDF uploaded & processed")
+        {summaries}
+        """
 
-    pdf_reader = PdfReader(uploaded_file)
-
-    for page in pdf_reader.pages:
-
-        text = page.extract_text()
-
-        if text:
-            pdf_text += text
-
-    st.sidebar.success("PDF Uploaded Successfully")
+        response = llm.invoke(final_prompt).content
 
 # =========================
 # SHOW CHAT HISTORY
