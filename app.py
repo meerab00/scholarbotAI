@@ -89,7 +89,7 @@ st.write("Powered by LangChain + Groq")
 # =========================
 # PDF READING
 # =========================
-elif feature == "PDF Summarizer":
+if feature == "PDF Summarizer":
 
     if not uploaded_file or len(chunks) == 0:
         response = "⚠ Please upload a PDF first."
