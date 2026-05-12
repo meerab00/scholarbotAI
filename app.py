@@ -1,28 +1,13 @@
+
 import streamlit as st
 from langchain_groq import ChatGroq
 from pypdf import PdfReader
 from dotenv import load_dotenv
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os
-pdf_text = ""
-chunks = []   # 🔥 MUST define globally
 
-if uploaded_file:
-
-    pdf_reader = PdfReader(uploaded_file)
-
-    for page in pdf_reader.pages:
-        text = page.extract_text()
-        if text:
-            pdf_text += text
-
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200
-    )
-
-    chunks = splitter.split_text(pdf_text)
 # =========================
-# PAGE CONFIG
+# CONFIG
 # =========================
 st.set_page_config(
     page_title="AI Study Assistant",
@@ -30,22 +15,16 @@ st.set_page_config(
     layout="wide"
 )
 
-# =========================
-# LOAD ENV
-# =========================
 load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# =========================
-# CHECK API KEY
-# =========================
 if not GROQ_API_KEY:
-    st.error("Groq API Key Not Found")
+    st.error("GROQ API KEY missing in .env")
     st.stop()
 
 # =========================
-# LOAD MODEL
+# MODEL (FREE GROQ)
 # =========================
 llm = ChatGroq(
     groq_api_key=GROQ_API_KEY,
@@ -65,214 +44,160 @@ st.sidebar.title("🤖 AI Study Assistant")
 
 feature = st.sidebar.selectbox(
     "Choose Feature",
-    [
-        "AI Chat",
-        "PDF Summarizer",
-        "Math Solver",
-        "Quiz Generator",
-        "Translator",
-        "Formula Sheet"
-    ]
+    ["AI Chat", "PDF Summarizer", "Math Solver", "Quiz Generator", "Translator", "Formula Sheet"]
 )
 
-uploaded_file = st.sidebar.file_uploader(
-    "Upload PDF",
-    type=["pdf"]
-)
+uploaded_file = st.sidebar.file_uploader("Upload PDF", type=["pdf"])
 
 # =========================
-# MAIN TITLE
+# TITLE
 # =========================
-st.title("🤖 AI Study Assistant")
-st.write("Powered by LangChain + Groq")
-
-# =========================
-# PDF READING
-# =========================
-if feature == "PDF Summarizer":
-
-    if not uploaded_file or len(chunks) == 0:
-        response = "⚠ Please upload a PDF first."
-
-    else:
-
-        summaries = []
-
-        for chunk in chunks[:5]:
-
-            prompt = f"Summarize this part:\n{chunk}"
-            result = llm.invoke(prompt).content
-            summaries.append(result)
-
-        final_prompt = f"""
-        Combine these summaries into one easy summary:
-
-        {summaries}
-        """
-
-        response = llm.invoke(final_prompt).content
+st.title("🤖 AI Study Assistant (Groq + LangChain)")
 
 # =========================
-# SHOW CHAT HISTORY
+# PDF PROCESSING
 # =========================
-for message in st.session_state.messages:
+pdf_text = ""
+chunks = []
 
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+if uploaded_file:
+
+    pdf_reader = PdfReader(uploaded_file)
+
+    for page in pdf_reader.pages:
+        text = page.extract_text()
+        if text:
+            pdf_text += text
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200
+    )
+
+    chunks = splitter.split_text(pdf_text)
+
+    st.sidebar.success("PDF Loaded Successfully")
+
+# =========================
+# CHAT HISTORY
+# =========================
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
 # =========================
 # FORMULA SHEET
 # =========================
 if feature == "Formula Sheet":
 
-    st.header("📘 Algebra")
+    st.header("📘 Calculus")
+
+    st.latex(r"\int x^n dx = \frac{x^{n+1}}{n+1} + C")
+    st.latex(r"\frac{d}{dx}(x^n)=nx^{n-1}")
+
+    st.header("📗 Algebra")
 
     st.latex(r"(a+b)^2 = a^2 + b^2 + 2ab")
-    st.latex(r"(a-b)^2 = a^2 + b^2 - 2ab")
-
-    st.header("📗 Calculus")
-
-    st.latex(r"\frac{d}{dx}(x^n)=nx^{n-1}")
-    st.latex(r"\int x^n dx = \frac{x^{n+1}}{n+1}")
 
     st.header("📙 Geometry")
 
     st.latex(r"Area = \pi r^2")
-    st.latex(r"Circumference = 2\pi r")
 
 # =========================
-# USER INPUT
+# INPUT
 # =========================
 prompt = st.chat_input("Ask something...")
 
 # =========================
-# AI FEATURES
+# MAIN LOGIC
 # =========================
 if prompt:
 
-    st.session_state.messages.append(
-        {
-            "role": "user",
-            "content": prompt
-        }
-    )
+    st.session_state.messages.append({"role": "user", "content": prompt})
 
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
 
-        try:
+        # =====================
+        # AI CHAT
+        # =====================
+        if feature == "AI Chat":
 
-            # =========================
-            # AI CHAT
-            # =========================
-            if feature == "AI Chat":
+            response = llm.invoke(prompt).content
 
-                response = llm.invoke(prompt).content
+        # =====================
+        # PDF SUMMARIZER (SAFE)
+        # =====================
+        elif feature == "PDF Summarizer":
 
-            # =========================
-            # PDF SUMMARIZER
-            # =========================
-            elif feature == "PDF Summarizer":
+            if not uploaded_file or len(chunks) == 0:
+                response = "⚠ Please upload a PDF first."
 
-    if not uploaded_file:
-        response = "Please upload a PDF first."
+            else:
 
-    else:
+                summaries = []
 
-        summaries = []
+                for chunk in chunks[:5]:
 
-        for chunk in chunks[:5]:  # limit to avoid token error
+                    result = llm.invoke(
+                        f"Summarize this in simple English:\n{chunk}"
+                    ).content
 
-            prompt = f"Summarize this part:\n{chunk}"
+                    summaries.append(result)
 
-            result = llm.invoke(prompt).content
-            summaries.append(result)
+                response = llm.invoke(
+                    f"Combine these summaries into one final summary:\n{summaries}"
+                ).content
 
-        final_prompt = f"""
-        Combine all these summaries into one final easy summary:
+        # =====================
+        # MATH SOLVER (LATEX ENABLED)
+        # =====================
+        elif feature == "Math Solver":
 
-        {summaries}
-        """
-
-        response = llm.invoke(final_prompt).content
-
-                if pdf_text == "":
-                    response = "Please upload a PDF first."
-
-                else:
-
-                    full_prompt = f"""
-                    Summarize this PDF in easy English:
-
-                    {pdf_text}
-                    """
-
-                    response = llm.invoke(full_prompt).content
-
-            # =========================
-            # MATH SOLVER
-            # =========================
-            elif feature == "Math Solver":
-
-                full_prompt = f"""
-Solve this math problem step by step.
+            full_prompt = f"""
+Solve step by step.
 
 IMPORTANT:
-- Show proper steps
-- Use LaTeX format for all equations
-- Give final answer clearly
+- Use LaTeX for all formulas
+- Show clear steps
+- Give final answer
 
 Problem: {prompt}
 """
 
-                response = llm.invoke(full_prompt).content
+            response = llm.invoke(full_prompt).content
 
-            # =========================
-            # QUIZ GENERATOR
-            # =========================
-            elif feature == "Quiz Generator":
+            st.markdown("### 🧮 Step-by-Step Solution")
 
-                full_prompt = f"""
-                Generate 10 MCQs with answers about:
+        # =====================
+        # QUIZ GENERATOR
+        # =====================
+        elif feature == "Quiz Generator":
 
-                {prompt}
-                """
+            response = llm.invoke(
+                f"Generate 10 MCQs with answers:\n{prompt}"
+            ).content
 
-                response = llm.invoke(full_prompt).content
+        # =====================
+        # TRANSLATOR
+        # =====================
+        elif feature == "Translator":
 
-            # =========================
-            # TRANSLATOR
-            # =========================
-            elif feature == "Translator":
+            response = llm.invoke(
+                f"Translate into Urdu:\n{prompt}"
+            ).content
 
-                full_prompt = f"""
-                Translate this into Urdu:
-
-                {prompt}
-                """
-
-                response = llm.invoke(full_prompt).content
-
-            else:
-                response = "Feature not available."
-
-        except Exception as e:
-
-            response = f"Error: {str(e)}"
+        else:
+            response = "Feature not available."
 
         st.markdown(response)
 
-    st.session_state.messages.append(
-        {
-            "role": "assistant",
-            "content": response
-        }
-    )
+    st.session_state.messages.append({"role": "assistant", "content": response})
 
 # =========================
 # FOOTER
 # =========================
 st.markdown("---")
-st.caption("Made with LangChain + Groq + Streamlit")
+st.caption("Made with ❤️ using LangChain + Groq + Streamlit")
