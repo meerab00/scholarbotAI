@@ -72,9 +72,29 @@ st.write("Powered by LangChain + Groq")
 # =========================
 # PDF READING
 # =========================
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
 pdf_text = ""
+chunks = []
 
 if uploaded_file:
+
+    pdf_reader = PdfReader(uploaded_file)
+
+    for page in pdf_reader.pages:
+        text = page.extract_text()
+        if text:
+            pdf_text += text
+
+    # 🔥 FIX: split into chunks (IMPORTANT)
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200
+    )
+
+    chunks = splitter.split_text(pdf_text)
+
+    st.sidebar.success("PDF uploaded & processed")
 
     pdf_reader = PdfReader(uploaded_file)
 
@@ -151,6 +171,28 @@ if prompt:
             # =========================
             elif feature == "PDF Summarizer":
 
+    if not uploaded_file:
+        response = "Please upload a PDF first."
+
+    else:
+
+        summaries = []
+
+        for chunk in chunks[:5]:  # limit to avoid token error
+
+            prompt = f"Summarize this part:\n{chunk}"
+
+            result = llm.invoke(prompt).content
+            summaries.append(result)
+
+        final_prompt = f"""
+        Combine all these summaries into one final easy summary:
+
+        {summaries}
+        """
+
+        response = llm.invoke(final_prompt).content
+
                 if pdf_text == "":
                     response = "Please upload a PDF first."
 
@@ -170,10 +212,15 @@ if prompt:
             elif feature == "Math Solver":
 
                 full_prompt = f"""
-                Solve this math problem step by step:
+Solve this math problem step by step.
 
-                {prompt}
-                """
+IMPORTANT:
+- Show proper steps
+- Use LaTeX format for all equations
+- Give final answer clearly
+
+Problem: {prompt}
+"""
 
                 response = llm.invoke(full_prompt).content
 
