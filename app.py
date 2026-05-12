@@ -173,7 +173,24 @@ if prompt:
                 {prompt}
                 """
 
-                response = llm.invoke(full_prompt).content
+                elif feature == "Math Solver":
+
+    full_prompt = f"""
+Solve this math problem step by step.
+
+IMPORTANT:
+- Use proper LaTeX format for all equations
+- Show clear steps
+- Give final answer at the end
+
+Problem:
+{prompt}
+"""
+
+    response = llm.invoke(full_prompt).content
+
+    st.markdown("### 🧮 Solution")
+    st.markdown(response)
 
             # =========================
             # QUIZ GENERATOR
