@@ -173,7 +173,7 @@ if prompt:
                 {prompt}
                 """
 
-                elif feature == "Math Solver":
+             elif feature == "Math Solver":
 
     full_prompt = f"""
 Solve this math problem step by step.
